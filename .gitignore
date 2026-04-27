@@ -1,0 +1,39 @@
+# Node/NPM
+node_modules/
+npm-debug.log
+*.tgz
+
+# System
+.DS_Store
+Thumbs.db
+.env.local
+.env.*.local
+
+# Logs
+*.log
+logs/
+
+# Build
+dist/
+build/
+.cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Testing
+.nyc_output/
+coverage/
+
+# Config (sensible Daten nicht committen)
+.env
+.env.production
+
+# OS
+._*
+.AppleDouble
+.LSOverride

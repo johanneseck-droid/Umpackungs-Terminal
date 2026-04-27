@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- React & Babel -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body class="bg-slate-100">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useRef, useEffect } = React;
+
+    function App() {
+      const [suchbegriff, setSuchbegriff] = useState('');
+      const [ergebnis, setErgebnis] = useState(null);
+      const [fehlerNummer, setFehlerNummer] = useState(null);
+      const [wirdGeladen, setWirdGeladen] = useState(false);
+      const inputRef = useRef(null);
+
+      useEffect(() => {
+        inputRef.current?.focus();
+      }, []);
+
+      const handleSuche = (e) => {
+        e.preventDefault();
+        const suchText = suchbegriff.trim();
+        if (!suchText) return;
+
+        setWirdGeladen(true);
+        setErgebnis(null);
+        setFehlerNummer(null);
+        setSuchbegriff('');
+
+        google.script.run
+          .withSuccessHandler((response) => {
+             setWirdGeladen(false);
+             if (response.found) {
+                setErgebnis(response.data);
+             } else {
+                setFehlerNummer(suchText);
+             }
+             inputRef.current?.focus();
+          })
+          .withFailureHandler((error) => {
+             setWirdGeladen(false);
+             alert("Verbindungsfehler zur Google Tabelle: " + error);
+             inputRef.current?.focus();
+          })
+          .sucheMaterial(suchText);
+      };
+
+      const resetScanner = () => {
+        setErgebnis(null);
+        setFehlerNummer(null);
+        setSuchbegriff('');
+        inputRef.current?.focus();
+      };
+
+      const renderBesonderes = (text) => {
+        if (!text) return null;
+        const eigenschaften = text.split(',').map(s => s.trim()).filter(s => s !== "");
+        if (eigenschaften.length === 0) return null;
+        
+        return (
+          <div className="flex flex-wrap gap-3 p-4 bg-amber-50 border-b border-amber-100">
+            {eigenschaften.map((eigenschaft, index) => (
+              <div key={index} className="flex items-center gap-2 text-amber-900 font-semibold bg-white px-4 py-2 rounded-full border-2 border-amber-300 shadow-sm text-lg">
+                ✅ {eigenschaft}
+              </div>
+            ))}
+          </div>
+        );
+      };
+
+      return (
+        <div className="min-h-screen p-4 md:p-8 font-sans text-slate-800">
+          <div className="max-w-6xl mx-auto">
+            
+            {/* --- KOMPAKTER, KOMBINIERTER HEADER --- */}
+            <div className="bg-white shadow-md rounded-xl mb-6 border-l-8 border-blue-600 p-5 md:p-6 flex flex-col md:flex-row items-center justify-between gap-4">
+              
+              {/* Titel & Info */}
+              <div className="w-full md:w-auto">
+                <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">📦 Umpackungs-Terminal</h1>
+                <p className="text-slate-500 text-sm mt-1">Barcode scannen oder Materialnummer eingeben</p>
+              </div>
+
+              {/* Flachere Suchzeile */}
+              <div className="w-full md:w-1/2 max-w-xl">
+                <form onSubmit={handleSuche} className="relative">
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    className="block w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-lg text-lg font-mono focus:ring-0 focus:border-blue-500 outline-none disabled:opacity-50"
+                    placeholder="🔍 Barcode scannen..."
+                    value={suchbegriff}
+                    onChange={(e) => setSuchbegriff(e.target.value)}
+                    autoComplete="off"
+                    disabled={wirdGeladen}
+                  />
+                  <button 
+                    type="submit" 
+                    disabled={wirdGeladen}
+                    className="absolute inset-y-1.5 right-1.5 bg-blue-600 hover:bg-blue-700 text-white px-6 rounded-md text-base font-semibold disabled:bg-slate-400 transition-colors"
+                  >
+                    {wirdGeladen ? "Sucht..." : "Suchen"}
+                  </button>
+                </form>
+              </div>
+            </div>
+            {/* --- ENDE HEADER --- */}
+
+            {wirdGeladen && (
+              <div className="flex flex-col items-center justify-center p-12 bg-white rounded-xl shadow-lg border border-slate-200">
+                <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mb-4"></div>
+                <h3 className="text-xl font-bold text-slate-700">Durchsuche Datenbank & Drive...</h3>
+              </div>
+            )}
+
+            {fehlerNummer && !wirdGeladen && (
+              <div className="bg-red-50 border-l-8 border-red-600 p-8 rounded-lg shadow-md flex items-center gap-6">
+                <div className="text-6xl">⚠️</div>
+                <div>
+                  <h3 className="text-red-900 font-bold text-2xl mb-2">Achtung: Material nicht gefunden!</h3>
+                  <p className="text-red-800 text-xl">
+                    Keine Anleitung zu Materialnummer <strong className="font-mono bg-red-200 px-2 py-1 rounded">{fehlerNummer}</strong> gefunden. 
+                    <br/>Bitte wende dich an deinen Koordinator.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {ergebnis && !wirdGeladen && (
+              <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-slate-200">
+                
+                {/* Header nur anzeigen, wenn KEIN PDF erfolgreich eingebettet wird */}
+                {(!ergebnis.pdfName || !ergebnis.pdfEmbedUrl) && (
+                  <div className="bg-slate-800 text-white p-6 flex justify-between items-center">
+                    <div>
+                      <div className="text-slate-400 text-sm font-bold tracking-wider uppercase">Materialnummer</div>
+                      <div className="text-3xl font-mono font-bold mt-1">{ergebnis.materialnummer}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-slate-400 text-sm font-bold tracking-wider uppercase">Bezeichnung</div>
+                      <div className="text-2xl font-bold mt-1">{ergebnis.bezeichnung}</div>
+                    </div>
+                  </div>
+                )}
+
+                {ergebnis.pdfName ? (
+                  /* --- FALL 1: PDF VORHANDEN --- */
+                  <div className="p-6">
+                    {ergebnis.pdfEmbedUrl ? (
+                      <div className="w-full bg-slate-200 rounded-lg overflow-hidden border-2 border-slate-300 h-[800px]">
+                        <iframe src={ergebnis.pdfEmbedUrl} className="w-full h-full" title="PDF Ansicht"></iframe>
+                      </div>
+                    ) : (
+                       <div className="bg-amber-50 border-l-4 border-amber-500 p-6 rounded-lg text-amber-800">
+                         <strong>Fehler:</strong> Das PDF '{ergebnis.pdfName}' ist in der Tabelle eingetragen, konnte aber in Google Drive nicht gefunden werden.
+                       </div>
+                    )}
+                  </div>
+                ) : (
+                  /* --- FALL 2: KEIN PDF (DYNAMISCHES TEMPLATE) --- */
+                  <div>
+                    {renderBesonderes(ergebnis.besonderes)}
+
+                    <div className="p-8 grid md:grid-cols-2 gap-8">
+                      {/* Linke Seite: Textanweisung */}
+                      <div>
+                        <h3 className="text-2xl font-bold text-slate-800 mb-4 border-b-2 border-slate-200 pb-2">
+                          Umpack-Anweisung:
+                        </h3>
+                        <div className="bg-blue-50 p-6 rounded-xl border-2 border-blue-200 shadow-sm whitespace-pre-line text-xl md:text-2xl leading-relaxed text-slate-800 min-h-[300px]">
+                          {ergebnis.umpackanweisung || <span className="text-slate-400 italic font-normal text-lg">Keine Anweisung hinterlegt.</span>}
+                        </div>
+                      </div>
+
+                      {/* Rechte Seite: Bilder */}
+                      <div>
+                        <h3 className="text-2xl font-bold text-slate-800 mb-4 border-b-2 border-slate-200 pb-2">
+                          Bilder:
+                        </h3>
+                        <div className="grid grid-cols-2 gap-4">
+                          {/* Bild 1 */}
+                          <div className="border-2 border-dashed border-slate-300 rounded-lg p-2 bg-slate-50 aspect-square flex flex-col items-center justify-center overflow-hidden">
+                            {ergebnis.bild1Url ? (
+                              <img src={ergebnis.bild1Url} className="w-full h-full object-contain rounded-md" alt="Bild 1" />
+                            ) : (
+                              <span className="text-slate-400 text-center text-sm font-medium">Kein Bild 1 gefunden</span>
+                            )}
+                          </div>
+                          {/* Bild 2 */}
+                          <div className="border-2 border-dashed border-slate-300 rounded-lg p-2 bg-slate-50 aspect-square flex flex-col items-center justify-center overflow-hidden">
+                            {ergebnis.bild2Url ? (
+                              <img src={ergebnis.bild2Url} className="w-full h-full object-contain rounded-md" alt="Bild 2" />
+                            ) : (
+                              <span className="text-slate-400 text-center text-sm font-medium">Kein Bild 2 gefunden</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="bg-slate-100 p-6 border-t border-slate-200 flex justify-end">
+                  <button onClick={resetScanner} className="flex items-center gap-2 text-slate-600 hover:text-slate-900 font-bold px-6 py-3 bg-white border-2 border-slate-300 hover:bg-slate-200 rounded-lg text-lg transition-colors">
+                    🔄 Anzeige zurücksetzen (Nächster Scan)
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
