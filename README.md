@@ -13,7 +13,7 @@ Webapp zur Verwaltung des Wareneingangs mit Google AppScript. Diese Webapp ermö
 
 ## Live Version
 
-**Deployment Link**: [Hier einfügen nach Deployment]
+**Deployment Link**: https://script.google.com/a/macros/external.roche.com/s/AKfycbxTdfnNm1NrpJyl71PdwgYUNUeRb-6p8dMX20ska3q1z5IBmYnFrrbxQxeQ2POph-0g/exec
 
 ## Technologie Stack
 
